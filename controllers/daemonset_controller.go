@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"github.com/go-logr/logr"
+	"github.com/lostbrain101/img-backup-controller/pkg/registry"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,8 +30,9 @@ import (
 // DaemonSetReconciler reconciles a DaemonSet object
 type DaemonSetReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Registry *registry.RegistryOptions
 }
 
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
@@ -51,7 +53,7 @@ func (r *DaemonSetReconciler) Reconcile(_ context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	daemonsetSpecUpdate, err := processContainers(daemonset.Spec.Template.Spec.Containers)
+	daemonsetSpecUpdate, err := processContainers(daemonset.Spec.Template.Spec.Containers, r.Registry)
 	if err != nil {
 		log.Error(err, "Error while processing containers")
 		return ctrl.Result{RequeueAfter: requeuePeriod}, err

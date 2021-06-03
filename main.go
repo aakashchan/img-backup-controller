@@ -18,7 +18,11 @@ package main
 
 import (
 	"flag"
+	registry2 "github.com/lostbrain101/img-backup-controller/pkg/registry"
+	"io/ioutil"
 	"os"
+	"path"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,11 +50,33 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
+
+	dockerConfigEnv := os.Getenv("DOCKER_CONFIG")
+
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+
+	var username string
+	flag.StringVar(&username, "user", "", "Username required for registry")
+
+	var org string
+	flag.StringVar(&org, "org", "", "Username required for registry")
+
+	var registryValue string
+	flag.StringVar(&registryValue, "registry", "", "Registry for image backup")
+
 	flag.Parse()
+
+	//read password from volume
+	path := path.Join(dockerConfigEnv, "token.json")
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		os.Exit(1)
+	}
+	token := strings.TrimSpace(string(content))
+	registry := registry2.New(username, token, registryValue, org)
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
@@ -67,17 +93,19 @@ func main() {
 	}
 
 	if err = (&controllers.DeploymentReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Deployment"),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("Deployment"),
+		Scheme:   mgr.GetScheme(),
+		Registry: registry,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Deployment")
 		os.Exit(1)
 	}
 	if err = (&controllers.DaemonSetReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("DaemonSet"),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("DaemonSet"),
+		Scheme:   mgr.GetScheme(),
+		Registry: registry,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DaemonSet")
 		os.Exit(1)

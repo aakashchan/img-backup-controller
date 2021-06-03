@@ -9,15 +9,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+func processImage(image string, registryOptions *registry2.RegistryOptions) (string, error) {
 
-func processImage(image string) (string, error) {
-
-	var (
-		newImage string
-		err      error
-	)
-
-	newImage, err = registry2.PullAndUploadImage(image)
+	newImage, err := registry2.BackupImage(image, registryOptions)
 	if err != nil {
 		return "", err
 	}
@@ -25,10 +19,10 @@ func processImage(image string) (string, error) {
 	return newImage, nil
 }
 
-func processContainers(containers []v1.Container) (bool, error) {
+func processContainers(containers []v1.Container, registryOptions *registry2.RegistryOptions) (bool, error) {
 	var updated bool
 	for i, container := range containers {
-		newImg, err := processImage(container.Image)
+		newImg, err := processImage(container.Image, registryOptions)
 		if err != nil {
 			return false, err
 		}

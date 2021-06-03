@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"github.com/go-logr/logr"
+	"github.com/lostbrain101/img-backup-controller/pkg/registry"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,6 +42,7 @@ type DeploymentReconciler struct {
 	Scheme       *runtime.Scheme
 	recorder     record.EventRecorder
 	ClusterCache cache.Cache
+	Registry     *registry.RegistryOptions
 }
 
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
@@ -60,7 +62,7 @@ func (r *DeploymentReconciler) Reconcile(_ context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	deploymentSpecUpdate, err := processContainers(deployment.Spec.Template.Spec.Containers)
+	deploymentSpecUpdate, err := processContainers(deployment.Spec.Template.Spec.Containers, r.Registry)
 	if err != nil {
 		log.Error(err, "Error while processing containers")
 		return ctrl.Result{RequeueAfter: requeuePeriod}, err

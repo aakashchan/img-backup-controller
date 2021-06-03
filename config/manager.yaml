@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app: image-backup-controller
+  name: image-backup-ns
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: image-backup-controller-secret
+  namespace: image-backup-ns
+type: opaque
+data:
+  token.json: "NmJiNGFmZDgtZjc2MC00NjJkLWE0ZWMtMzRhNTY4ZTI5YWIz"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: image-backup-ctrl-sa
+  namespace: image-backup-ns
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: image-backup-ctrl-cr
+rules:
+  - apiGroups: [ "rbac.authorization.k8s.io", "" ]
+    resources: [ "namespaces", "clusterroles", "clusterrolebindings", "configmaps", "events", "pods", "serviceaccounts" ]
+    verbs: ["get", "watch", "list", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets"]
+    verbs: ["get", "watch", "list", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: image-backup-ctrl-cb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: image-backup-ctrl-cr
+subjects:
+  - kind: ServiceAccount
+    name: image-backup-ctrl-sa
+    namespace: image-backup-ns
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-backup-controller
+  namespace: image-backup-ns
+  labels:
+    control-plane: image-backup-controller
+spec:
+  selector:
+    matchLabels:
+      control-plane: image-backup-controller
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        control-plane: image-backup-controller
+    spec:
+      serviceAccountName: image-backup-ctrl-sa
+      containers:
+      - command:
+        - /manager
+        args:
+        - --enable-leader-election
+        - --user
+        - imgbackupcontroller
+        - --org
+        - backuphub
+        - --registry
+        - index.docker.io
+        image: imgbackupcontroller/controller:latest
+        name: manager
+        resources:
+          limits:
+            cpu: 300m
+            memory: 100Mi
+          requests:
+            cpu: 300m
+            memory: 100Mi
+        volumeMounts:
+          - name: registrytoken
+            mountPath: "/docker"
+        env:
+          - name: DOCKER_CONFIG
+            value: "/docker"
+      volumes:
+        - name: registrytoken
+          secret:
+            secretName: image-backup-controller-secret
+      terminationGracePeriodSeconds: 10

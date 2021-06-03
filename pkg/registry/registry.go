@@ -12,13 +12,24 @@ import (
 )
 
 const (
-	DefaultDockerOrg = "backuphub"
-
-	DefaultRegistry = "index.docker.io"
-
-	UserName = "imgbackupcontroller"
-	PassKey  = "6bb4afd8-f760-462d-a4ec-34a568e29ab3"
+	BackupDefaultTag = "v1.0.0-bkup"
 )
+
+type RegistryOptions struct {
+	UserName     string
+	Token        string
+	Registry     string
+	Organization string
+}
+
+func New(userName, token, registry, org string) *RegistryOptions {
+	return &RegistryOptions{
+		UserName:     userName,
+		Token:        token,
+		Registry:     registry,
+		Organization: org,
+	}
+}
 
 var (
 	tr = &http.Transport{
@@ -35,24 +46,27 @@ var (
 	}
 )
 
-func PullAndUploadImage(image string) (string, error) {
-	// get the original image's reference
-	originalRef, err := name.ParseReference(image)
+func BackupImage(image string, r *RegistryOptions) (string, error) {
+	imageReference, err := name.ParseReference(image)
 	if err != nil {
 		return "", err
 	}
 
-	// check if the image already belongs to the backup repository
-	if originalRef.Context().Registry.RegistryStr() == DefaultRegistry &&
-		strings.HasPrefix(originalRef.Context().RepositoryStr(), fmt.Sprintf("%s/", DefaultDockerOrg)){
+	if imageReference.Context().Registry.RegistryStr() == r.Registry &&
+		strings.HasPrefix(imageReference.Context().RepositoryStr(), fmt.Sprintf("%s/", r.Organization)) {
 		return image, nil
 	}
 
-	// build the backup image reference
+	// Some images have both sha and tag, for those images we can use default tag
+	// Need to find a better solution
+	tag := imageReference.Identifier()
+	if strings.Contains(tag, "sha256") {
+		tag = BackupDefaultTag
+	}
 	backupImageName := fmt.Sprintf("%s/%s:%s",
-		DefaultDockerOrg,
-		strings.Replace(originalRef.Context().RepositoryStr(), "/", "-", -1),
-		originalRef.Identifier())
+		r.Organization,
+		strings.Replace(imageReference.Context().RepositoryStr(), "/", "-", -1),
+		tag)
 
 	backupRef, err := name.ParseReference(backupImageName)
 	if err != nil {
@@ -67,8 +81,8 @@ func PullAndUploadImage(image string) (string, error) {
 	}
 
 	err = crane.Push(originalImage, backupRef.String(), crane.WithAuth(&authn.Basic{
-		Username: UserName,
-		Password: PassKey,
+		Username: r.UserName,
+		Password: r.Token,
 	}), crane.WithTransport(tr))
 	if err != nil {
 		return "", err
