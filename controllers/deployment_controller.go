@@ -30,23 +30,23 @@ import (
 )
 
 const (
- 	requeuePeriod = 10 * time.Second
- 	kubeSystem = "kube-system"
+	requeuePeriod = 10 * time.Second
+	kubeSystem    = "kube-system"
 )
 
 // DeploymentReconciler reconciles a Deployment object
 type DeploymentReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
-	recorder        record.EventRecorder
-	ClusterCache  cache.Cache
+	Log          logr.Logger
+	Scheme       *runtime.Scheme
+	recorder     record.EventRecorder
+	ClusterCache cache.Cache
 }
 
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
 
-func (r *DeploymentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *DeploymentReconciler) Reconcile(_ context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("deployment", req.NamespacedName)
 
 	var deployment = &appsv1.Deployment{}
@@ -60,7 +60,7 @@ func (r *DeploymentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, err
 	}
 
-	deploymentSpecUpdate,err := processContainers(deployment.Spec.Template.Spec.Containers)
+	deploymentSpecUpdate, err := processContainers(deployment.Spec.Template.Spec.Containers)
 	if err != nil {
 		log.Error(err, "Error while processing containers")
 		return ctrl.Result{RequeueAfter: requeuePeriod}, err

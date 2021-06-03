@@ -27,7 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/lostbrain.io/img-backup-controller/controllers"
+	"github.com/lostbrain101/img-backup-controller/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -59,7 +59,7 @@ func main() {
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "1a72357e.lostbrain.io",
+		LeaderElectionID:   "1a72357e.lostbrain101",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
