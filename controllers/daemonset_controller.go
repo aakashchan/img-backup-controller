@@ -38,16 +38,16 @@ type DaemonSetReconciler struct {
 
 func (r *DaemonSetReconciler) Reconcile(_ context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var err error
-	log := r.Log.WithValues("daemonset", req.NamespacedName)
+	log := r.Log.WithValues("DaemonSet", req.NamespacedName)
 
 	daemonset := &appsv1.DaemonSet{}
 	if err = r.Get(context.TODO(), req.NamespacedName, daemonset); err != nil {
 		if apierrs.IsNotFound(err) {
-			log.Info("Daemenset not found ", "name:", req.Name)
+			log.Info("DaemonSet not found ", "name:", req.Name)
 			log.Info("reconcile completed")
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "Failed to get Deployment, reconcile failed")
+		log.Error(err, "Failed to get DaemonSet, reconcile failed")
 		return ctrl.Result{}, err
 	}
 
@@ -59,11 +59,12 @@ func (r *DaemonSetReconciler) Reconcile(_ context.Context, req ctrl.Request) (ct
 
 	if daemonsetSpecUpdate {
 		if err := r.Update(context.TODO(), daemonset); err != nil {
-			log.Error(err, "Deployment could not be updated.")
+			log.Error(err, "DaemonSet could not be updated.")
 			return ctrl.Result{RequeueAfter: requeuePeriod}, err
 		}
 	}
 
+	log.Info("DaemonSet reconciled")
 	return ctrl.Result{}, nil
 }
 
