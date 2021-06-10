@@ -15,7 +15,7 @@ Have a controller which watches the applications and “caches” the images by 
 ## Installing the controller
 
 ```bash
-	 kubectl apply -f config/manager.yaml 
+   kubectl apply -f config/manager.yaml 
    kubectl apply -f config/rbac/leader_election_role.yaml 
- 	 kubectl apply -f config/rbac/leader_election_role.yaml
+   kubectl apply -f config/rbac/leader_election_role.yaml
 ```
